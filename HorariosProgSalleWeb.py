@@ -10,7 +10,7 @@ def parsear_horario_visual(file):
     wb = openpyxl.load_workbook(file, data_only=True)
     
     # Validar que exista la pestaña correcta
-    nombre_hoja = "HorarioSem_DiseñoIndustrial"
+    nombre_hoja = "HorarioSem"
     if nombre_hoja not in wb.sheetnames:
         st.error(f"No se encontró la hoja '{nombre_hoja}'. Revisa el nombre de la pestaña en tu Excel.")
         return None
