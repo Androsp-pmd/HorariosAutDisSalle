@@ -24,7 +24,7 @@ def parsear_horario_visual(file):
     for row in range(1, ws.max_row + 1):
         cell_value = str(ws.cell(row=row, column=1).value).upper()
         # Evita leer el título principal duplicado
-        if cell_value.endswith("SEMESTRE") or cell_value.startswith("SEMESTRE"):
+        if "SEMESTRE" in cell_value and "HORARIOS 202602" not in cell_value:
             bloques.append({"nombre": cell_value, "inicio": row + 2, "fin": row + 14})
 
     # Escanear celdas
