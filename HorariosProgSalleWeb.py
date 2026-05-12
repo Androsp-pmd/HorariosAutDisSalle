@@ -70,7 +70,7 @@ if archivo_subido:
         df_reales = df[~df['Profesor'].isin(etiquetas_ignorar)]
         
         # Buscar cruces (mismo día, hora y profesor)
-        cruces = df_reales[df_reales.duplicated(subset=['Dia', 'Hora', 'Profesor'], keep=False)]
+        cruces = df_reales[df_reales.groupby(['Dia', 'Hora', 'Profesor'])['Codigo'].transform('nunique') > 1]
 
         # --- LÓGICA DE DECISIÓN ---
         if not cruces.empty:
