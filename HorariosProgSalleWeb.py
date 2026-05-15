@@ -93,33 +93,49 @@ if archivo_subido:
                         aggfunc=lambda x: " / ".join(set(x))
                     )
                     
-                    # 2. Reindexar para tener la grilla completa
+                    # 2. Reindexar para tener la grilla completa (Lunes a Viernes)
                     cal = cal.reindex(index=horas_orden, columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]).fillna("-")
                     
-                    # 3. Crear una fila de separación con el nombre del profesor
-                    # Creamos un pequeño DataFrame de una fila que sirve de título
-                    separador = pd.DataFrame(index=[f"--- DOCENTE: {profe} ---"], columns=cal.columns).fillna("")
+                    # --- CONSTRUCCIÓN DEL CUADRO INDIVIDUAL ---
                     
-                    # 4. Añadir a la lista: El título, luego el horario, y luego una fila vacía de espacio
-                    espacio_blanco = pd.DataFrame(index=[" "], columns=cal.columns).fillna("")
+                    # Fila A: Título del Docente
+                    # Creamos un DF de una fila que ocupa todas las columnas
+                    titulo = pd.DataFrame([["" for _ in range(6)]], columns=['H'] + list(cal.columns))
+                    titulo.iloc[0, 0] = f"DOCENTE: {profe}"
                     
-                    lista_bloques.append(separador)
-                    lista_bloques.append(cal)
-                    lista_bloques.append(espacio_blanco)
+                    # Fila B: Encabezados de los días (esto es lo que pediste que se repita)
+                    encabezados = pd.DataFrame([["HORA", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"]], 
+                                               columns=['H'] + list(cal.columns))
+                    
+                    # Fila C: Los datos del horario
+                    # Reseteamos el índice de 'cal' para que la columna 'Hora' sea datos reales
+                    datos_horario = cal.reset_index()
+                    datos_horario.columns = ['H'] + list(cal.columns) # Normalizamos nombres de columnas para el concat
+                    
+                    # Fila D: Espacio en blanco para separar del siguiente profe
+                    espacio = pd.DataFrame([["" for _ in range(6)]], columns=['H'] + list(cal.columns))
 
-                # Concatenar todos los bloques en un solo DataFrame gigante
-                df_consolidado = pd.concat(lista_bloques)
+                    # Unimos las piezas del profesor actual
+                    lista_bloques.append(titulo)
+                    lista_bloques.append(encabezados)
+                    lista_bloques.append(datos_horario)
+                    lista_bloques.append(espacio)
 
-                # Escribir el DataFrame consolidado en una sola hoja
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df_consolidado.to_excel(writer, sheet_name="Horarios_Consolidados")
+                # Concatenar todos los profesores en un solo gran DataFrame
+                if lista_bloques:
+                    df_final = pd.concat(lista_bloques, ignore_index=True)
 
-                st.download_button(
-                    label="📥 Descargar Horarios Consolidados (Excel)",
-                    data=output.getvalue(),
-                    file_name="Reporte_Horarios_Docentes.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                    # Escribir a Excel
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        # index=False y header=False porque ya nosotros creamos los títulos manualmente
+                        df_final.to_excel(writer, sheet_name="Horarios_Consolidados", index=False, header=False)
+
+                    st.download_button(
+                        label="📥 Descargar Reporte Consolidado (Excel)",
+                        data=output.getvalue(),
+                        file_name="Reporte_Horarios_Docentes.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
             except Exception as e:
                 st.error(f"Error al generar el Excel: {e}")
     else:
