@@ -73,36 +73,51 @@ if archivo_subido:
             st.warning("No se encontraron profesores reales para procesar (solo hay PENDIENTES o TBD).")
             
         else:
-            st.success("✅ ¡Base de datos validada! Generando archivos...")
+            st.success("✅ ¡Base de datos validada! Generando reporte consolidado...")
             
             output = BytesIO()
             horas_orden = df['Hora'].unique()
             
-            # Intentar crear el Excel
             try:
+                # Lista para recolectar todos los bloques de profesores
+                lista_bloques = []
+
+                for profe in df_reales['Profesor'].unique():
+                    df_profe = df_reales[df_reales['Profesor'] == profe]
+                    
+                    # 1. Crear el pivote (horario) del profesor
+                    cal = df_profe.pivot_table(
+                        index='Hora', 
+                        columns='Dia', 
+                        values='Asignatura', 
+                        aggfunc=lambda x: " / ".join(set(x))
+                    )
+                    
+                    # 2. Reindexar para tener la grilla completa
+                    cal = cal.reindex(index=horas_orden, columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]).fillna("-")
+                    
+                    # 3. Crear una fila de separación con el nombre del profesor
+                    # Creamos un pequeño DataFrame de una fila que sirve de título
+                    separador = pd.DataFrame(index=[f"--- DOCENTE: {profe} ---"], columns=cal.columns).fillna("")
+                    
+                    # 4. Añadir a la lista: El título, luego el horario, y luego una fila vacía de espacio
+                    espacio_blanco = pd.DataFrame(index=[" "], columns=cal.columns).fillna("")
+                    
+                    lista_bloques.append(separador)
+                    lista_bloques.append(cal)
+                    lista_bloques.append(espacio_blanco)
+
+                # Concatenar todos los bloques en un solo DataFrame gigante
+                df_consolidado = pd.concat(lista_bloques)
+
+                # Escribir el DataFrame consolidado en una sola hoja
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    for profe in df_reales['Profesor'].unique():
-                        df_profe = df_reales[df_reales['Profesor'] == profe]
-                        
-                        # Usamos pivot_table con 'first' por si hay materias espejo (mismo código)
-                        cal = df_profe.pivot_table(
-                            index='Hora', 
-                            columns='Dia', 
-                            values='Asignatura', 
-                            aggfunc=lambda x: " / ".join(set(x))
-                        )
-                        
-                        # Reindexar para asegurar cuadrícula completa
-                        cal = cal.reindex(index=horas_orden, columns=["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]).fillna("-")
-                        
-                        # Limpiar nombre de pestaña (máx 31 caracteres, sin caracteres prohibidos)
-                        nombre_pestana = "".join(c for c in str(profe)[:30] if c not in r'[]:*?/\\')
-                        cal.to_excel(writer, sheet_name=nombre_pestana)
+                    df_consolidado.to_excel(writer, sheet_name="Horarios_Consolidados")
 
                 st.download_button(
-                    label="📥 Descargar Horarios Individuales (Excel)",
+                    label="📥 Descargar Horarios Consolidados (Excel)",
                     data=output.getvalue(),
-                    file_name="Horarios_Profesores_Generados.xlsx",
+                    file_name="Reporte_Horarios_Docentes.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             except Exception as e:
