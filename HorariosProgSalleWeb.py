@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import openpyxl
+from openpyxl.styles import Alignment
 from io import BytesIO
 
 def parsear_horario_visual(file):
@@ -84,12 +85,17 @@ if archivo_subido:
 
                 for profe in df_reales['Profesor'].unique():
                     df_profe = df_reales[df_reales['Profesor'] == profe]
-                    
+                    # Asignatura y salón en la misma celda, separados por salto de línea
+                    df_profe = df_profe.assign(Celda=df_profe['Asignatura'] + "\n" + df_profe['Salon'])
+
+                    # Horas clase programadas: franjas (día, hora) únicas del docente
+                    total_horas = len(df_profe[['Dia', 'Hora']].drop_duplicates())
+
                     # 1. Crear el pivote (horario) del profesor
                     cal = df_profe.pivot_table(
-                        index='Hora', 
-                        columns='Dia', 
-                        values='Asignatura', 
+                        index='Hora',
+                        columns='Dia',
+                        values='Celda',
                         aggfunc=lambda x: " / ".join(set(x))
                     )
                     
@@ -102,6 +108,8 @@ if archivo_subido:
                     # Creamos un DF de una fila que ocupa todas las columnas
                     titulo = pd.DataFrame([["" for _ in range(6)]], columns=['H'] + list(cal.columns))
                     titulo.iloc[0, 0] = f"DOCENTE: {profe}"
+                    titulo.iloc[0, 1] = "TOTAL HORAS CLASE:"
+                    titulo.iloc[0, 2] = total_horas  # número, para usarlo en fórmulas
                     
                     # Fila B: Encabezados de los días (esto es lo que pediste que se repita)
                     encabezados = pd.DataFrame([["HORA", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"]], 
@@ -129,6 +137,11 @@ if archivo_subido:
                     with pd.ExcelWriter(output, engine='openpyxl') as writer:
                         # index=False y header=False porque ya nosotros creamos los títulos manualmente
                         df_final.to_excel(writer, sheet_name="Horarios_Consolidados", index=False, header=False)
+                        # Ajuste de texto para que se vea el salto de línea asignatura/salón
+                        ws_out = writer.sheets["Horarios_Consolidados"]
+                        for fila_celdas in ws_out.iter_rows():
+                            for celda in fila_celdas:
+                                celda.alignment = Alignment(wrap_text=True, vertical="top")
 
                     st.download_button(
                         label="📥 Descargar Reporte Consolidado (Excel)",
