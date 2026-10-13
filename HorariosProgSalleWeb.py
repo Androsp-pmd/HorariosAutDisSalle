@@ -108,7 +108,8 @@ if archivo_subido:
                     # Creamos un DF de una fila que ocupa todas las columnas
                     titulo = pd.DataFrame([["" for _ in range(6)]], columns=['H'] + list(cal.columns))
                     titulo.iloc[0, 0] = f"DOCENTE: {profe}"
-                    titulo.iloc[0, 1] = f"TOTAL HORAS CLASE: {total_horas}"
+                    titulo.iloc[0, 1] = "TOTAL HORAS CLASE:"
+                    titulo.iloc[0, 2] = total_horas  # número, para usarlo en fórmulas
                     
                     # Fila B: Encabezados de los días (esto es lo que pediste que se repita)
                     encabezados = pd.DataFrame([["HORA", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"]], 
